@@ -1,0 +1,27 @@
+_format_version: "2.1"
+_transform: true
+
+services:
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-all
+        paths:
+          - /auth/v1/
+        strip_path: true
+
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        paths:
+          - /rest/v1/
+        strip_path: true
+
+  - name: health
+    url: http://kong:8001/
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        strip_path: true
