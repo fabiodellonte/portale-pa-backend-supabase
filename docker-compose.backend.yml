@@ -78,7 +78,7 @@ services:
       retries: 8
 
   studio:
-    image: supabase/studio:20250113-5f59f7d
+    image: supabase/studio:20240729-ce42139
     container_name: pa-supabase-studio
     restart: unless-stopped
     depends_on:
