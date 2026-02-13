@@ -237,3 +237,70 @@ alter table if exists tenant_branding
 create index if not exists idx_user_profiles_tenant_language on user_profiles(tenant_id, language);
 create index if not exists idx_user_roles_user on user_roles(user_id);
 create index if not exists idx_tenant_branding_tenant on tenant_branding(tenant_id);
+
+alter table if exists user_profiles
+  add column if not exists email text;
+
+create table if not exists bug_reports (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  reported_by uuid not null references user_profiles(id) on delete cascade,
+  title text not null,
+  description text not null,
+  page_url text,
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table if exists bug_reports
+  drop constraint if exists bug_reports_status_check;
+alter table if exists bug_reports
+  add constraint bug_reports_status_check check (status in ('open', 'in_review', 'resolved', 'closed'));
+
+create table if not exists admin_email_notifications (
+  id uuid primary key default gen_random_uuid(),
+  bug_report_id uuid not null references bug_reports(id) on delete cascade,
+  recipient_user_id uuid not null references user_profiles(id) on delete cascade,
+  recipient_email text not null,
+  subject text not null,
+  body text not null,
+  delivery_status text not null default 'queued',
+  created_at timestamptz not null default now()
+);
+
+alter table if exists admin_email_notifications
+  drop constraint if exists admin_email_notifications_delivery_status_check;
+alter table if exists admin_email_notifications
+  add constraint admin_email_notifications_delivery_status_check check (delivery_status in ('queued', 'sent', 'failed'));
+
+create table if not exists global_docs (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  title text not null,
+  content_md text not null,
+  is_published boolean not null default true,
+  sort_order integer not null default 0,
+  updated_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists tenant_docs (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  slug text not null,
+  title text not null,
+  content_md text not null,
+  is_published boolean not null default true,
+  sort_order integer not null default 0,
+  updated_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(tenant_id, slug)
+);
+
+create index if not exists idx_bug_reports_tenant_created on bug_reports(tenant_id, created_at desc);
+create index if not exists idx_admin_email_notifications_bug on admin_email_notifications(bug_report_id);
+create index if not exists idx_global_docs_published on global_docs(is_published, sort_order);
+create index if not exists idx_tenant_docs_tenant_published on tenant_docs(tenant_id, is_published, sort_order);

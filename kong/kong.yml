@@ -7,6 +7,7 @@ services:
     routes:
       - name: auth-v1-all
         paths:
+          - /auth/v1
           - /auth/v1/
         strip_path: true
 
@@ -15,6 +16,7 @@ services:
     routes:
       - name: rest-v1-all
         paths:
+          - /rest/v1
           - /rest/v1/
         strip_path: true
 
