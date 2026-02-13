@@ -310,3 +310,33 @@ create index if not exists idx_bug_reports_tenant_created on bug_reports(tenant_
 create index if not exists idx_admin_email_notifications_bug on admin_email_notifications(bug_report_id);
 create index if not exists idx_global_docs_published on global_docs(is_published, sort_order);
 create index if not exists idx_tenant_docs_tenant_published on tenant_docs(tenant_id, is_published, sort_order);
+
+-- Dev demo identities (idempotent): citizen_demo / maintainer_demo / admin_demo
+insert into tenants(id, name, codice_fiscale_ente)
+values (
+  '00000000-0000-0000-0000-000000000001',
+  'Comune Demo Portale PA',
+  '00000000000'
+)
+on conflict (id) do update set
+  name = excluded.name,
+  codice_fiscale_ente = excluded.codice_fiscale_ente;
+
+insert into user_profiles(id, tenant_id, full_name, email, language)
+values
+  ('00000000-0000-0000-0000-000000000111', '00000000-0000-0000-0000-000000000001', 'citizen_demo', 'citizen.demo@portale-pa.local', 'it'),
+  ('00000000-0000-0000-0000-000000000222', '00000000-0000-0000-0000-000000000001', 'maintainer_demo', 'maintainer.demo@portale-pa.local', 'it'),
+  ('00000000-0000-0000-0000-000000000333', '00000000-0000-0000-0000-000000000001', 'admin_demo', 'admin.demo@portale-pa.local', 'it')
+on conflict (id) do update set
+  tenant_id = excluded.tenant_id,
+  full_name = excluded.full_name,
+  email = excluded.email,
+  language = excluded.language,
+  updated_at = now();
+
+insert into user_roles(user_id, role_id)
+values
+  ('00000000-0000-0000-0000-000000000111', (select id from roles where code = 'cittadino' limit 1)),
+  ('00000000-0000-0000-0000-000000000222', (select id from roles where code = 'operatore' limit 1)),
+  ('00000000-0000-0000-0000-000000000333', (select id from roles where code = 'super_admin' limit 1))
+on conflict (user_id, role_id) do nothing;
