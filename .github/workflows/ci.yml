@@ -17,7 +17,7 @@ jobs:
         run: ./tests/backend-ci-test.ps1
 
       - name: Email report
-        if: always() && secrets.SMTP_SERVER != ''
+        if: always()
         env:
           SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -32,6 +32,10 @@ jobs:
           python - <<'PY'
           import os, smtplib
           from email.message import EmailMessage
+
+          if not os.environ.get('SMTP_SERVER'):
+              print('SMTP_SERVER not configured: skipping email report')
+              raise SystemExit(0)
 
           msg = EmailMessage()
           msg['Subject'] = f"[{os.environ['REPO']}] CI {os.environ['CI_STATUS']}"
