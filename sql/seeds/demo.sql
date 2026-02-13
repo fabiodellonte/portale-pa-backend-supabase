@@ -29,6 +29,11 @@ on conflict (tenant_id) do update set
   footer_text = excluded.footer_text,
   updated_at = now();
 
+update user_profiles
+set avatar_url = '/public/avatars/default-citizen.png',
+    avatar_meta = jsonb_build_object('seed', true, 'source', 'demo')
+where id = '00000000-0000-0000-0000-000000000111';
+
 insert into segnalazione_categories (id, tenant_id, slug, name, color, sort_order)
 values
   ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'viabilita', 'Viabilità', '#EF4444', 1),

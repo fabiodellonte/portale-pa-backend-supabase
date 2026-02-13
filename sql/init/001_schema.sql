@@ -239,7 +239,9 @@ create index if not exists idx_user_roles_user on user_roles(user_id);
 create index if not exists idx_tenant_branding_tenant on tenant_branding(tenant_id);
 
 alter table if exists user_profiles
-  add column if not exists email text;
+  add column if not exists email text,
+  add column if not exists avatar_url text,
+  add column if not exists avatar_meta jsonb not null default '{}'::jsonb;
 
 create table if not exists bug_reports (
   id uuid primary key default gen_random_uuid(),
@@ -322,16 +324,18 @@ on conflict (id) do update set
   name = excluded.name,
   codice_fiscale_ente = excluded.codice_fiscale_ente;
 
-insert into user_profiles(id, tenant_id, full_name, email, language)
+insert into user_profiles(id, tenant_id, full_name, email, language, avatar_url, avatar_meta)
 values
-  ('00000000-0000-0000-0000-000000000111', '00000000-0000-0000-0000-000000000001', 'citizen_demo', 'citizen.demo@portale-pa.local', 'it'),
-  ('00000000-0000-0000-0000-000000000222', '00000000-0000-0000-0000-000000000001', 'maintainer_demo', 'maintainer.demo@portale-pa.local', 'it'),
-  ('00000000-0000-0000-0000-000000000333', '00000000-0000-0000-0000-000000000001', 'admin_demo', 'admin.demo@portale-pa.local', 'it')
+  ('00000000-0000-0000-0000-000000000111', '00000000-0000-0000-0000-000000000001', 'citizen_demo', 'citizen.demo@portale-pa.local', 'it', '/public/avatars/default-citizen.png', '{"seed": true}'::jsonb),
+  ('00000000-0000-0000-0000-000000000222', '00000000-0000-0000-0000-000000000001', 'maintainer_demo', 'maintainer.demo@portale-pa.local', 'it', null, '{}'::jsonb),
+  ('00000000-0000-0000-0000-000000000333', '00000000-0000-0000-0000-000000000001', 'admin_demo', 'admin.demo@portale-pa.local', 'it', null, '{}'::jsonb)
 on conflict (id) do update set
   tenant_id = excluded.tenant_id,
   full_name = excluded.full_name,
   email = excluded.email,
   language = excluded.language,
+  avatar_url = excluded.avatar_url,
+  avatar_meta = excluded.avatar_meta,
   updated_at = now();
 
 insert into user_roles(user_id, role_id)
