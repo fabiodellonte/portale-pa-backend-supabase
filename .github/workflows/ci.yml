@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Backend structural tests
+        shell: pwsh
+        run: ./tests/backend-ci-test.ps1
+
+      - name: Email report
+        if: always() && secrets.SMTP_SERVER != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          secure: true
+          subject: "[${{ github.repository }}] CI ${{ job.status }}"
+          to: fabiodellonte@gmail.com
+          from: ${{ secrets.SMTP_FROM }}
+          body: |
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Status: ${{ job.status }}
+            Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
