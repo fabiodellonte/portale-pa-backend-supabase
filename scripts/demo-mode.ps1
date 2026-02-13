@@ -11,6 +11,7 @@ $seedFile = Join-Path $root 'sql\seeds\demo.sql'
 $stateDir = Join-Path $root '.demo-state'
 $backupDir = Join-Path $stateDir 'backups'
 $lastBackupFile = Join-Path $stateDir 'last-real-backup.txt'
+$modeFile = Join-Path $stateDir 'current-mode.txt'
 
 if (!(Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir | Out-Null }
 if (!(Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
@@ -51,9 +52,17 @@ Ensure-DbUp
 
 switch ($Mode) {
   'status' {
+    if (Test-Path $modeFile) {
+      $tracked = (Get-Content $modeFile -Raw).Trim().ToLower()
+      if ($tracked -eq 'on') {
+        Write-Host 'DEMO mode ON (tracked state file).'
+      } elseif ($tracked -eq 'off') {
+        Write-Host 'DEMO mode OFF (tracked state file).'
+      }
+    }
+
     if (Test-Path $lastBackupFile) {
       Write-Host "Last REAL backup: $(Get-Content $lastBackupFile -Raw)"
-      Write-Host 'Current mode cannot be inferred with certainty; last switch captured above.'
     } else {
       Write-Host 'No REAL backup recorded yet. Demo mode likely never enabled from this script.'
     }
@@ -62,6 +71,7 @@ switch ($Mode) {
     $backup = Backup-Current
     Write-Host "REAL backup saved to: $backup"
     Restore-FromFile $seedFile
+    Set-Content -Path $modeFile -Value 'on'
     Write-Host 'DEMO mode ON (deterministic demo dataset loaded).'
   }
   'off' {
@@ -70,6 +80,7 @@ switch ($Mode) {
     }
     $backupPath = (Get-Content $lastBackupFile -Raw).Trim()
     Restore-FromFile $backupPath
+    Set-Content -Path $modeFile -Value 'off'
     Write-Host "DEMO mode OFF (restored REAL DB from: $backupPath)."
   }
 }
