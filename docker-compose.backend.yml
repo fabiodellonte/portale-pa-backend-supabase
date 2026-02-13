@@ -95,5 +95,14 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
 
+  adminer:
+    image: adminer:4
+    container_name: pa-db-adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "54324:8080"
+
 volumes:
   db_data:
