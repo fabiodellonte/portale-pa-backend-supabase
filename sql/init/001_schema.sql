@@ -114,6 +114,8 @@ create table if not exists segnalazioni (
   attachments jsonb not null default '[]'::jsonb,
   tags text[] not null default '{}',
   metadata jsonb not null default '{}'::jsonb,
+  moderation_flags jsonb not null default '{}'::jsonb,
+  public_response text,
   created_by uuid,
   assigned_to uuid,
   resolved_at timestamptz,
@@ -177,6 +179,7 @@ create index if not exists idx_segnalazioni_tenant_category on segnalazioni(tena
 create index if not exists idx_segnalazioni_tenant_neighborhood on segnalazioni(tenant_id, neighborhood_id);
 create index if not exists idx_segnalazioni_tags on segnalazioni using gin(tags);
 create index if not exists idx_segnalazioni_metadata on segnalazioni using gin(metadata);
+create index if not exists idx_segnalazioni_moderation_flags on segnalazioni using gin(moderation_flags);
 
 create index if not exists idx_segnalazione_votes_lookup on segnalazione_votes(tenant_id, segnalazione_id, user_id);
 create index if not exists idx_segnalazione_follows_lookup on segnalazione_follows(tenant_id, segnalazione_id, user_id);
@@ -190,3 +193,47 @@ values
   ('operatore', 'Operatore'),
   ('cittadino', 'Cittadino')
 on conflict (code) do nothing;
+
+-- Phase 4: localization + branding + RBAC-safe schema extensions
+alter table if exists user_profiles
+  add column if not exists language text not null default 'it',
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table if exists user_profiles
+  drop constraint if exists user_profiles_language_check;
+alter table if exists user_profiles
+  add constraint user_profiles_language_check check (language in ('it', 'en'));
+
+create table if not exists tenant_branding (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null unique references tenants(id) on delete cascade,
+  logo_url text,
+  primary_color text not null default '#0055A4',
+  secondary_color text not null default '#FFFFFF',
+  font_family text,
+  header_variant text,
+  footer_text text,
+  theme jsonb not null default '{}'::jsonb,
+  updated_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table if exists tenant_branding
+  drop constraint if exists tenant_branding_primary_color_check;
+alter table if exists tenant_branding
+  add constraint tenant_branding_primary_color_check check (primary_color ~ '^#[A-Fa-f0-9]{6}$');
+
+alter table if exists tenant_branding
+  drop constraint if exists tenant_branding_secondary_color_check;
+alter table if exists tenant_branding
+  add constraint tenant_branding_secondary_color_check check (secondary_color ~ '^#[A-Fa-f0-9]{6}$');
+
+alter table if exists tenant_branding
+  drop constraint if exists tenant_branding_header_variant_check;
+alter table if exists tenant_branding
+  add constraint tenant_branding_header_variant_check check (header_variant is null or header_variant in ('standard', 'compact'));
+
+create index if not exists idx_user_profiles_tenant_language on user_profiles(tenant_id, language);
+create index if not exists idx_user_roles_user on user_roles(user_id);
+create index if not exists idx_tenant_branding_tenant on tenant_branding(tenant_id);
