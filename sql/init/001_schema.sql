@@ -60,9 +60,128 @@ create table if not exists audit_log (
   created_at timestamptz not null default now()
 );
 
+-- Civic reporting domain (segnalazioni)
+create table if not exists segnalazione_categories (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  slug text not null,
+  name text not null,
+  description text,
+  color text,
+  icon text,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_by uuid,
+  updated_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(tenant_id, slug)
+);
+
+create table if not exists segnalazione_neighborhoods (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  code text not null,
+  name text not null,
+  description text,
+  geojson jsonb,
+  centroid_lat numeric(9,6),
+  centroid_lng numeric(9,6),
+  is_active boolean not null default true,
+  created_by uuid,
+  updated_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(tenant_id, code)
+);
+
+create table if not exists segnalazioni (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  codice text not null,
+  titolo text not null,
+  descrizione text not null,
+  stato text not null default 'in_attesa',
+  visibilita text not null default 'pubblica',
+  priorita text not null default 'media',
+  severita text not null default 'media',
+  source text not null default 'cittadino_web',
+  category_id uuid references segnalazione_categories(id) on delete set null,
+  neighborhood_id uuid references segnalazione_neighborhoods(id) on delete set null,
+  address text,
+  lat numeric(9,6),
+  lng numeric(9,6),
+  attachments jsonb not null default '[]'::jsonb,
+  tags text[] not null default '{}',
+  metadata jsonb not null default '{}'::jsonb,
+  created_by uuid,
+  assigned_to uuid,
+  resolved_at timestamptz,
+  closed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(tenant_id, codice)
+);
+
+create table if not exists segnalazione_votes (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  segnalazione_id uuid not null references segnalazioni(id) on delete cascade,
+  user_id uuid not null,
+  created_at timestamptz not null default now(),
+  unique(tenant_id, segnalazione_id, user_id)
+);
+
+create table if not exists segnalazione_follows (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  segnalazione_id uuid not null references segnalazioni(id) on delete cascade,
+  user_id uuid not null,
+  created_at timestamptz not null default now(),
+  unique(tenant_id, segnalazione_id, user_id)
+);
+
+create table if not exists segnalazione_timeline_events (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  segnalazione_id uuid not null references segnalazioni(id) on delete cascade,
+  event_type text not null,
+  visibility text not null default 'public',
+  message text,
+  payload jsonb not null default '{}'::jsonb,
+  created_by uuid,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists segnalazione_report_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  segnalazione_id uuid not null references segnalazioni(id) on delete cascade,
+  status text not null,
+  severity text,
+  priority text,
+  assigned_to uuid,
+  is_public boolean not null default true,
+  snapshot_data jsonb not null default '{}'::jsonb,
+  changed_by uuid,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_pratiche_tenant on pratiche(tenant_id);
 create index if not exists idx_pratica_events_pratica on pratica_events(pratica_id);
 create index if not exists idx_audit_tenant_created on audit_log(tenant_id, created_at desc);
+
+create index if not exists idx_segnalazioni_tenant_created on segnalazioni(tenant_id, created_at desc);
+create index if not exists idx_segnalazioni_tenant_stato on segnalazioni(tenant_id, stato);
+create index if not exists idx_segnalazioni_tenant_category on segnalazioni(tenant_id, category_id);
+create index if not exists idx_segnalazioni_tenant_neighborhood on segnalazioni(tenant_id, neighborhood_id);
+create index if not exists idx_segnalazioni_tags on segnalazioni using gin(tags);
+create index if not exists idx_segnalazioni_metadata on segnalazioni using gin(metadata);
+
+create index if not exists idx_segnalazione_votes_lookup on segnalazione_votes(tenant_id, segnalazione_id, user_id);
+create index if not exists idx_segnalazione_follows_lookup on segnalazione_follows(tenant_id, segnalazione_id, user_id);
+create index if not exists idx_segnalazione_timeline_created on segnalazione_timeline_events(segnalazione_id, created_at desc);
+create index if not exists idx_segnalazione_snapshots_created on segnalazione_report_snapshots(segnalazione_id, created_at desc);
 
 insert into roles(code, name)
 values
