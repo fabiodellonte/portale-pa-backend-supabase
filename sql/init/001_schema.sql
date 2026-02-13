@@ -263,11 +263,17 @@ create table if not exists admin_email_notifications (
   bug_report_id uuid not null references bug_reports(id) on delete cascade,
   recipient_user_id uuid not null references user_profiles(id) on delete cascade,
   recipient_email text not null,
+  provider text not null default 'smtp',
+  sender_email text,
   subject text not null,
   body text not null,
   delivery_status text not null default 'queued',
   created_at timestamptz not null default now()
 );
+
+alter table if exists admin_email_notifications
+  add column if not exists provider text not null default 'smtp',
+  add column if not exists sender_email text;
 
 alter table if exists admin_email_notifications
   drop constraint if exists admin_email_notifications_delivery_status_check;
